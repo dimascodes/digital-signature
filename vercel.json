@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/proxy"
+      "destination": "http://${process.env.BACK}/api/proxy"
     }
   ]
 }
