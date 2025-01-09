@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FileText, Key, CheckCircle } from "lucide-react";
 
 const DigitalSignature = () => {
-  const BASE_URL = process.env.BACKEND;
   const [activeTab, setActiveTab] = useState("create-keys");
   const [status, setStatus] = useState({ type: "", message: "" });
   const [files, setFiles] = useState({
@@ -25,23 +24,26 @@ const DigitalSignature = () => {
     setFiles((prev) => ({ ...prev, [type]: file }));
   };
 
-  const createKeys = async () => {
+  const handleApiRequest = async (endpoint, method = "POST", body = null) => {
     try {
-      const response = await fetch(`${BASE_URL}/api/create-keys`, {
-        method: "POST",
+      const response = await fetch(`/api/${endpoint}`, {
+        method,
+        body,
       });
-      if (response.ok) {
-        setStatus({
-          type: "success",
-          message:
-            "Kunci berhasil dibuat! Public dan private key telah diunduh.",
-        });
-      } else {
-        throw new Error("Gagal membuat kunci.");
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      setStatus({ type: "success", message: data.message });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
+  };
+
+  const createKeys = async () => {
+    await handleApiRequest("create-keys", "POST");
   };
 
   const signData = async () => {
@@ -57,22 +59,7 @@ const DigitalSignature = () => {
     formData.append("dataFile", files.dataFile);
     formData.append("privateKey", files.privateKey);
 
-    try {
-      const response = await fetch(`${BASE_URL}/api/sign-data`, {
-        method: "POST",
-        body: formData,
-      });
-      if (response.ok) {
-        setStatus({
-          type: "success",
-          message: "Data berhasil ditandatangani dan hash file telah dibuat.",
-        });
-      } else {
-        throw new Error("Gagal menandatangani data.");
-      }
-    } catch (error) {
-      setStatus({ type: "error", message: error.message });
-    }
+    await handleApiRequest("sign-data", "POST", formData);
   };
 
   const verifyData = async () => {
@@ -89,22 +76,7 @@ const DigitalSignature = () => {
     formData.append("publicKey", files.publicKey);
     formData.append("hashFile", files.hashFile);
 
-    try {
-      const response = await fetch(`${BASE_URL}/api/verify-data`, {
-        method: "POST",
-        body: formData,
-      });
-      if (response.ok) {
-        setStatus({
-          type: "success",
-          message: "Verifikasi berhasil! Tanda tangan valid.",
-        });
-      } else {
-        throw new Error("Gagal memverifikasi data.");
-      }
-    } catch (error) {
-      setStatus({ type: "error", message: error.message });
-    }
+    await handleApiRequest("verify-data", "POST", formData);
   };
 
   return (
@@ -118,82 +90,64 @@ const DigitalSignature = () => {
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger
-                value="create-keys"
-                className="flex items-center gap-2"
-              >
-                <Key className="w-4 h-4" />
-                Buat Kunci
+              <TabsTrigger value="create-keys">
+                <Key className="w-4 h-4" /> Buat Kunci
               </TabsTrigger>
-              <TabsTrigger
-                value="sign-data"
-                className="flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Tanda Tangan
+              <TabsTrigger value="sign-data">
+                <FileText className="w-4 h-4" /> Tanda Tangan
               </TabsTrigger>
-              <TabsTrigger
-                value="verify-data"
-                className="flex items-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Verifikasi
+              <TabsTrigger value="verify-data">
+                <CheckCircle className="w-4 h-4" /> Verifikasi
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="create-keys">
-              <div className="space-y-4 p-4">
-                <Button onClick={createKeys} className="w-full">
-                  Generate Keys
-                </Button>
-              </div>
+              <Button onClick={createKeys} className="w-full">
+                Generate Keys
+              </Button>
             </TabsContent>
 
             <TabsContent value="sign-data">
-              <div className="space-y-4 p-4">
-                <label>Upload Data File</label>
-                <Input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, "dataFile")}
-                />
-                <label>Upload Private Key</label>
-                <Input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, "privateKey")}
-                />
-                <Button onClick={signData} className="w-full">
-                  Sign Data
-                </Button>
-              </div>
+              <Input
+                type="file"
+                onChange={(e) => handleFileChange(e, "dataFile")}
+                placeholder="Upload Data File"
+              />
+              <Input
+                type="file"
+                onChange={(e) => handleFileChange(e, "privateKey")}
+                placeholder="Upload Private Key"
+              />
+              <Button onClick={signData} className="w-full">
+                Sign Data
+              </Button>
             </TabsContent>
 
             <TabsContent value="verify-data">
-              <div className="space-y-4 p-4">
-                <label>Upload Signature File</label>
-                <Input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, "signatureFile")}
-                />
-                <label>Upload Public Key</label>
-                <Input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, "publicKey")}
-                />
-                <label>Upload Hash File</label>
-                <Input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, "hashFile")}
-                />
-                <Button onClick={verifyData} className="w-full">
-                  Verify Data
-                </Button>
-              </div>
+              <Input
+                type="file"
+                onChange={(e) => handleFileChange(e, "signatureFile")}
+                placeholder="Upload Signature File"
+              />
+              <Input
+                type="file"
+                onChange={(e) => handleFileChange(e, "publicKey")}
+                placeholder="Upload Public Key"
+              />
+              <Input
+                type="file"
+                onChange={(e) => handleFileChange(e, "hashFile")}
+                placeholder="Upload Hash File"
+              />
+              <Button onClick={verifyData} className="w-full">
+                Verify Data
+              </Button>
             </TabsContent>
           </Tabs>
 
           {status.message && (
             <Alert
-              className={`mt-4 ${status.type === "error" ? "bg-red-50" : "bg-green-50"}`}
+              className={status.type === "error" ? "bg-red-50" : "bg-green-50"}
             >
               <AlertDescription>{status.message}</AlertDescription>
             </Alert>
