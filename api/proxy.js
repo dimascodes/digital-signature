@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   const proxy = createProxyMiddleware({
-    target: `http://${process.env.BACK}`,
+    target: backendUrl,
     changeOrigin: true,
     pathRewrite: {
       "^/api": "",
