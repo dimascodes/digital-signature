@@ -43,7 +43,26 @@ const DigitalSignature = () => {
   };
 
   const createKeys = async () => {
-    await handleApiRequest("create-keys", "POST");
+    try {
+      const response = await fetch("/api/proxy/api/create-keys", {
+        method: "POST",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStatus({
+          type: "success",
+          message:
+            "Kunci berhasil dibuat! Public dan private key telah diunduh.",
+        });
+      } else {
+        throw new Error("Gagal membuat kunci.");
+      }
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error.message || "Terjadi kesalahan.",
+      });
+    }
   };
 
   const signData = async () => {
@@ -59,7 +78,25 @@ const DigitalSignature = () => {
     formData.append("dataFile", files.dataFile);
     formData.append("privateKey", files.privateKey);
 
-    await handleApiRequest("sign-data", "POST", formData);
+    try {
+      const response = await fetch("/api/proxy/api/sign-data", {
+        method: "POST",
+        body: formData,
+      });
+      if (response.ok) {
+        setStatus({
+          type: "success",
+          message: "Data berhasil ditandatangani dan hash file telah dibuat.",
+        });
+      } else {
+        throw new Error("Gagal menandatangani data.");
+      }
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error.message || "Terjadi kesalahan.",
+      });
+    }
   };
 
   const verifyData = async () => {
@@ -76,9 +113,26 @@ const DigitalSignature = () => {
     formData.append("publicKey", files.publicKey);
     formData.append("hashFile", files.hashFile);
 
-    await handleApiRequest("verify-data", "POST", formData);
+    try {
+      const response = await fetch("/api/proxy/api/verify-data", {
+        method: "POST",
+        body: formData,
+      });
+      if (response.ok) {
+        setStatus({
+          type: "success",
+          message: "Verifikasi berhasil! Tanda tangan valid.",
+        });
+      } else {
+        throw new Error("Gagal memverifikasi data.");
+      }
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error.message || "Terjadi kesalahan.",
+      });
+    }
   };
-
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <Card>
@@ -159,4 +213,3 @@ const DigitalSignature = () => {
 };
 
 export default DigitalSignature;
-

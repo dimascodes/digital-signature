@@ -1,18 +1,23 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 
-export default async function handler(req, res) {
-  const proxy = createProxyMiddleware({
-    target: `http://${process.env.BACK}`,
-    changeOrigin: true,
-    pathRewrite: {
-      "^/api": "/api",
-    },
-  });
+const proxy = createProxyMiddleware({
+  target: process.env.BACK, // Menggunakan environment variable
+  changeOrigin: true,
+  pathRewrite: { "^/api/proxy": "/" }, // Menulis ulang path untuk diteruskan ke backend
+});
 
-  proxy(req, res, (err) => {
-    if (err) {
-      console.error("Proxy error:", err);
-      res.status(500).send("Proxy error");
+export default function handler(req, res) {
+  return proxy(req, res, (result) => {
+    if (result instanceof Error) {
+      res.status(500).json({ message: "Internal Server Error" });
+    } else {
+      res.status(404).json({ message: "Not Found" });
     }
   });
 }
+
+export const config = {
+  api: {
+    bodyParser: false, // Proxy membutuhkan body parser dinonaktifkan
+  },
+};
