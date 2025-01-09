@@ -1,18 +1,11 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 export default async function handler(req, res) {
-  const backendUrl = process.env.BACK;
-
-  if (!backendUrl) {
-    res.status(500).json({ error: "Backend URL is not configured!" });
-    return;
-  }
-
   const proxy = createProxyMiddleware({
-    target: backendUrl,
+    target: `http://${process.env.BACK}`,
     changeOrigin: true,
     pathRewrite: {
-      "^/api": "",
+      "^/api": "/api",
     },
   });
 
