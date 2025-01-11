@@ -1,0 +1,10 @@
+{
+  "files": {
+    "main.js": "/digital-signature/static/js/main.d5bbb4c5.js",
+    "index.html": "/digital-signature/index.html",
+    "main.d5bbb4c5.js.map": "/digital-signature/static/js/main.d5bbb4c5.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.d5bbb4c5.js"
+  ]
+}
