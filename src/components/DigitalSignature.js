@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileText, Key, CheckCircle } from "lucide-react";
 
 const DigitalSignature = () => {
   const [activeTab, setActiveTab] = useState("create-keys");
   const [status, setStatus] = useState({ type: "", message: "" });
-  const [files, setFiles] = useState({
-    publicKey: null,
+  const [sessionKeys, setSessionKeys] = useState({
     privateKey: null,
+    publicKey: null,
+  });
+  const [files, setFiles] = useState({
     dataFile: null,
     hashFile: null,
     signatureFile: null,
@@ -24,115 +25,79 @@ const DigitalSignature = () => {
     setFiles((prev) => ({ ...prev, [type]: file }));
   };
 
-  const handleApiRequest = async (endpoint, method = "POST", body = null) => {
-    try {
-      const response = await fetch(`/api/${endpoint}`, {
-        method,
-        body,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setStatus({ type: "success", message: data.message });
-    } catch (error) {
-      setStatus({ type: "error", message: error.message });
-    }
-  };
-
   const createKeys = async () => {
     try {
-      const response = await fetch("/api/proxy/api/create-keys", {
-        method: "POST",
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND}/api/create-keys`,
+        { method: "POST" },
+      );
+      const data = await response.json();
+      setSessionKeys({
+        privateKey: data.private_key,
+        publicKey: data.public_key,
       });
-      if (response.ok) {
-        const data = await response.json();
-        setStatus({
-          type: "success",
-          message:
-            "Kunci berhasil dibuat! Public dan private key telah diunduh.",
-        });
-      } else {
-        throw new Error("Gagal membuat kunci.");
-      }
+      setStatus({
+        type: "success",
+        message: "Keys generated successfully!",
+      });
     } catch (error) {
       setStatus({
         type: "error",
-        message: error.message || "Terjadi kesalahan.",
+        message: "Failed to generate keys.",
       });
     }
+  };
+
+  const resetKeys = () => {
+    setSessionKeys({ privateKey: null, publicKey: null });
+    setStatus({
+      type: "success",
+      message: "Keys reset successfully!",
+    });
   };
 
   const signData = async () => {
-    if (!files.dataFile || !files.privateKey) {
+    if (!files.dataFile || (!files.privateKey && !sessionKeys.privateKey)) {
       setStatus({
         type: "error",
-        message: "Mohon upload file data dan private key terlebih dahulu.",
+        message: "Upload data file and private key first.",
       });
       return;
     }
 
     const formData = new FormData();
     formData.append("dataFile", files.dataFile);
-    formData.append("privateKey", files.privateKey);
+    formData.append(
+      "privateKey",
+      files.privateKey ||
+        new Blob([sessionKeys.privateKey], { type: "text/plain" }),
+    );
 
     try {
-      const response = await fetch("/api/proxy/api/sign-data", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND}/api/sign`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+
       if (response.ok) {
         setStatus({
           type: "success",
-          message: "Data berhasil ditandatangani dan hash file telah dibuat.",
+          message: "Data signed successfully!",
         });
       } else {
-        throw new Error("Gagal menandatangani data.");
+        throw new Error("Failed to sign data.");
       }
     } catch (error) {
       setStatus({
         type: "error",
-        message: error.message || "Terjadi kesalahan.",
+        message: error.message,
       });
     }
   };
 
-  const verifyData = async () => {
-    if (!files.signatureFile || !files.publicKey || !files.hashFile) {
-      setStatus({
-        type: "error",
-        message: "Mohon upload semua file yang diperlukan.",
-      });
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("signatureFile", files.signatureFile);
-    formData.append("publicKey", files.publicKey);
-    formData.append("hashFile", files.hashFile);
-
-    try {
-      const response = await fetch("/api/proxy/api/verify-data", {
-        method: "POST",
-        body: formData,
-      });
-      if (response.ok) {
-        setStatus({
-          type: "success",
-          message: "Verifikasi berhasil! Tanda tangan valid.",
-        });
-      } else {
-        throw new Error("Gagal memverifikasi data.");
-      }
-    } catch (error) {
-      setStatus({
-        type: "error",
-        message: error.message || "Terjadi kesalahan.",
-      });
-    }
-  };
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <Card>
@@ -144,68 +109,61 @@ const DigitalSignature = () => {
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="create-keys">
-                <Key className="w-4 h-4" /> Buat Kunci
-              </TabsTrigger>
-              <TabsTrigger value="sign-data">
-                <FileText className="w-4 h-4" /> Tanda Tangan
-              </TabsTrigger>
-              <TabsTrigger value="verify-data">
-                <CheckCircle className="w-4 h-4" /> Verifikasi
-              </TabsTrigger>
+              <TabsTrigger value="create-keys">Generate Keys</TabsTrigger>
+              <TabsTrigger value="sign-data">Sign Data</TabsTrigger>
+              <TabsTrigger value="verify-data">Verify Data</TabsTrigger>
             </TabsList>
 
             <TabsContent value="create-keys">
-              <Button onClick={createKeys} className="w-full">
-                Generate Keys
-              </Button>
+              <div className="space-y-4 p-4">
+                <Button onClick={createKeys}>Generate Keys</Button>
+                {sessionKeys.privateKey && (
+                  <>
+                    <div>
+                      <strong>Private Key:</strong>
+                      <textarea
+                        className="w-full"
+                        rows="4"
+                        value={sessionKeys.privateKey}
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <strong>Public Key:</strong>
+                      <textarea
+                        className="w-full"
+                        rows="4"
+                        value={sessionKeys.publicKey}
+                        readOnly
+                      />
+                    </div>
+                    <Button onClick={resetKeys}>Reset Keys</Button>
+                  </>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="sign-data">
-              <Input
-                type="file"
-                onChange={(e) => handleFileChange(e, "dataFile")}
-                placeholder="Upload Data File"
-              />
-              <Input
-                type="file"
-                onChange={(e) => handleFileChange(e, "privateKey")}
-                placeholder="Upload Private Key"
-              />
-              <Button onClick={signData} className="w-full">
-                Sign Data
-              </Button>
-            </TabsContent>
-
-            <TabsContent value="verify-data">
-              <Input
-                type="file"
-                onChange={(e) => handleFileChange(e, "signatureFile")}
-                placeholder="Upload Signature File"
-              />
-              <Input
-                type="file"
-                onChange={(e) => handleFileChange(e, "publicKey")}
-                placeholder="Upload Public Key"
-              />
-              <Input
-                type="file"
-                onChange={(e) => handleFileChange(e, "hashFile")}
-                placeholder="Upload Hash File"
-              />
-              <Button onClick={verifyData} className="w-full">
-                Verify Data
-              </Button>
+              <div className="space-y-4 p-4">
+                <div>
+                  <label>Upload Data File</label>
+                  <Input
+                    type="file"
+                    onChange={(e) => handleFileChange(e, "dataFile")}
+                  />
+                </div>
+                <div>
+                  <label>Upload Private Key</label>
+                  <Input
+                    type="file"
+                    onChange={(e) => handleFileChange(e, "privateKey")}
+                  />
+                </div>
+                <Button onClick={signData}>Sign Data</Button>
+              </div>
             </TabsContent>
           </Tabs>
-
-          {status.message && (
-            <Alert
-              className={status.type === "error" ? "bg-red-50" : "bg-green-50"}
-            >
-              <AlertDescription>{status.message}</AlertDescription>
-            </Alert>
-          )}
+          {status.message && <Alert>{status.message}</Alert>}
         </CardContent>
       </Card>
     </div>
